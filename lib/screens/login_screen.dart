@@ -1,10 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../utils/app_colors.dart';
+import '../utils/flow_manager.dart';
+import '../models/flow_state.dart';
 import 'dashboard_screen.dart';
+import 'payment_screen.dart';
+import 'profile_screen.dart';
+import '../models/product.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  final bool isDeepLinkEntry;
+  final Product? product;
+  final double? finalPrice;
+
+  const LoginScreen({
+    super.key,
+    this.isDeepLinkEntry = false,
+    this.product,
+    this.finalPrice,
+  });
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -19,6 +33,17 @@ class _LoginScreenState extends State<LoginScreen> {
   
   bool _otpSent = false;
   bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialize flow based on entry point
+    if (widget.isDeepLinkEntry) {
+      FlowManager().initializeDeepLinkFlow();
+    } else {
+      FlowManager().initializeCheckoutFlow();
+    }
+  }
 
   void _sendOTP() async {
     if (_phoneController.text.length < 10) {
@@ -75,10 +100,46 @@ class _LoginScreenState extends State<LoginScreen> {
       _isLoading = false;
     });
 
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => const DashboardScreen()),
-    );
+    // Navigate based on flow type
+    _navigateAfterOTP();
+  }
+
+  void _navigateAfterOTP() {
+    final currentFlow = FlowManager().currentFlow;
+    
+    if (currentFlow == null) {
+      // Fallback to dashboard if no flow state
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const DashboardScreen()),
+      );
+      return;
+    }
+
+    switch (currentFlow.flowType) {
+      case UserFlowType.checkoutPath:
+        // CheckoutPath: OTP → Payment → Personal Info → Contract → Dashboard
+        FlowManager().updateStep(FlowStep.payment);
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => PaymentScreen(
+              product: widget.product!,
+              finalPrice: widget.finalPrice!,
+            ),
+          ),
+        );
+        break;
+        
+      case UserFlowType.deepLinkPath:
+        // DeepLinkPath: OTP → Dashboard (locked with modals)
+        FlowManager().updateStep(FlowStep.lockedDashboard);
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const DashboardScreen()),
+        );
+        break;
+    }
   }
 
   @override
@@ -86,6 +147,7 @@ class _LoginScreenState extends State<LoginScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Login'),
+        automaticallyImplyLeading: false, // Prevent back navigation in flow
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),
@@ -120,9 +182,11 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    _otpSent 
-                        ? 'Enter the OTP sent to your phone'
-                        : 'Enter your phone number to continue',
+                    widget.isDeepLinkEntry
+                        ? 'Complete your setup to access dashboard'
+                        : _otpSent 
+                            ? 'Enter the OTP sent to your phone'
+                            : 'Enter your phone number to continue',
                     style: const TextStyle(
                       fontSize: 16,
                       color: AppColors.darkGray,
