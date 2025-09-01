@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../utils/app_colors.dart';
+import '../utils/deep_link_handler.dart';
 import '../widgets/product_card.dart';
 import '../models/product.dart';
 import 'product_detail_screen.dart';
@@ -92,6 +93,14 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
         actions: [
+          // Debug button to test deep link (remove in production)
+          IconButton(
+            icon: const Icon(Icons.link, color: AppColors.teal),
+            onPressed: () {
+              DeepLinkHandler().simulateDeepLinkEntry(context);
+            },
+            tooltip: 'Test Deep Link',
+          ),
           IconButton(
             icon: const Icon(Icons.person_outline),
             onPressed: () {

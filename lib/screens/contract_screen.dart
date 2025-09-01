@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
 import '../utils/app_colors.dart';
+import '../utils/flow_manager.dart';
+import '../models/flow_state.dart';
+import 'dashboard_screen.dart';
 
 class ContractScreen extends StatefulWidget {
-  const ContractScreen({super.key});
+  final bool isModal;
+
+  const ContractScreen({super.key, this.isModal = false});
 
   @override
   State<ContractScreen> createState() => _ContractScreenState();
@@ -35,6 +40,9 @@ class _ContractScreenState extends State<ContractScreen> {
       _isLoading = false;
     });
 
+    // Mark contract as completed
+    FlowManager().completeContract();
+
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Contract signed successfully!'),
@@ -42,7 +50,24 @@ class _ContractScreenState extends State<ContractScreen> {
       ),
     );
 
-    Navigator.pop(context);
+    // Navigate based on context
+    _navigateAfterContractSigning();
+  }
+
+  void _navigateAfterContractSigning() {
+    final currentFlow = FlowManager().currentFlow;
+    
+    if (widget.isModal) {
+      // If this is a modal in DeepLinkPath, pop back to dashboard
+      // The dashboard will unlock since both modals are now completed
+      Navigator.pop(context);
+    } else {
+      // If this is part of CheckoutPath flow, navigate to unlocked dashboard
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const DashboardScreen()),
+      );
+    }
   }
 
   @override
@@ -50,6 +75,7 @@ class _ContractScreenState extends State<ContractScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Digital Contract'),
+        automaticallyImplyLeading: !widget.isModal, // No back button for modals
       ),
       body: Column(
         children: [
@@ -84,9 +110,11 @@ class _ContractScreenState extends State<ContractScreen> {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        const Text(
-                          'Please review and sign the digital contract',
-                          style: TextStyle(
+                        Text(
+                          widget.isModal 
+                              ? 'Please sign the contract to complete setup'
+                              : 'Please review and sign the digital contract',
+                          style: const TextStyle(
                             fontSize: 16,
                             color: AppColors.darkGray,
                           ),

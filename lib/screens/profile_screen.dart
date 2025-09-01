@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
 import '../utils/app_colors.dart';
+import '../utils/flow_manager.dart';
+import '../models/flow_state.dart';
+import 'contract_screen.dart';
+import 'dashboard_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key});
+  final bool isModal;
+
+  const ProfileScreen({super.key, this.isModal = false});
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -18,13 +24,50 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   void _saveProfile() {
     if (_formKey.currentState!.validate()) {
+      // Mark personal info as completed
+      FlowManager().completePersonalInfo();
+      
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Profile saved successfully!'),
           backgroundColor: AppColors.success,
         ),
       );
+
+      // Navigate based on context and flow
+      _navigateAfterProfileSave();
+    }
+  }
+
+  void _navigateAfterProfileSave() {
+    final currentFlow = FlowManager().currentFlow;
+    
+    if (currentFlow == null) {
       Navigator.pop(context);
+      return;
+    }
+
+    if (widget.isModal) {
+      // If this is a modal in DeepLinkPath, pop back to dashboard
+      // The dashboard will handle showing the next modal
+      Navigator.pop(context);
+    } else {
+      // If this is part of CheckoutPath flow, navigate to contract
+      switch (currentFlow.flowType) {
+        case UserFlowType.checkoutPath:
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const ContractScreen()),
+          );
+          break;
+        case UserFlowType.deepLinkPath:
+          // This shouldn't happen in normal flow, but fallback to dashboard
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const DashboardScreen()),
+          );
+          break;
+      }
     }
   }
 
@@ -33,6 +76,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Complete Profile'),
+        automaticallyImplyLeading: !widget.isModal, // No back button for modals
       ),
       body: Form(
         key: _formKey,
@@ -59,19 +103,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    const Text(
-                      'Complete Your Profile',
-                      style: TextStyle(
+                    Text(
+                      widget.isModal ? 'Complete Your Profile' : 'Complete Your Profile',
+                      style: const TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    const Text(
-                      'Please fill in your personal information',
-                      style: TextStyle(
+                    Text(
+                      widget.isModal 
+                          ? 'Please complete your profile to access dashboard'
+                          : 'Please fill in your personal information',
+                      style: const TextStyle(
                         fontSize: 16,
                         color: AppColors.darkGray,
                       ),
+                      textAlign: TextAlign.center,
                     ),
                   ],
                 ),

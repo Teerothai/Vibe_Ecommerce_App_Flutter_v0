@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/product.dart';
 import '../utils/app_colors.dart';
+import '../utils/flow_manager.dart';
 import 'login_screen.dart';
 
 class CheckoutScreen extends StatefulWidget {
@@ -40,6 +41,21 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   double get finalPrice => widget.product.price - _discount;
+
+  void _proceedToLogin() {
+    // Initialize checkout flow when proceeding from checkout
+    FlowManager().initializeCheckoutFlow();
+    
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => LoginScreen(
+          product: widget.product,
+          finalPrice: finalPrice,
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -261,14 +277,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             child: SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const LoginScreen(),
-                    ),
-                  );
-                },
+                onPressed: _proceedToLogin,
                 child: const Text(
                   'Proceed to Login',
                   style: TextStyle(
